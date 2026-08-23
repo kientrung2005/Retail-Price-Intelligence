@@ -1,283 +1,195 @@
 import logging
 import re
-import asyncio
+import math
+import time
 from datetime import datetime
-from playwright.async_api import async_playwright
+from typing import List, Dict, Any, Optional
+import requests
+from bs4 import BeautifulSoup
+
+from configs.settings import settings
+from src.crawler.base_crawler import BaseCrawler
 from src.redis.client import redis_client
-from src.storage.minio_client import minio_client
 from src.utils.brand_utils import normalize_brand
-from src.utils.url_utils import normalize_url
-from src.config.settings import settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-class DienmayxanhCrawler:
+class DienmayxanhCrawler(BaseCrawler):
     BASE_URL = "https://www.dienmayxanh.com"
-    USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
-    CATEGORY_MAP = {
-        "mobile": "https://www.dienmayxanh.com/dien-thoai-smartphone",
-        "laptop": "https://www.dienmayxanh.com/laptop",
-        "tablet": "https://www.dienmayxanh.com/may-tinh-bang",
-        "smartwatch": "https://www.dienmayxanh.com/dong-ho-thong-minh",
-        "headphone": "https://www.dienmayxanh.com/tai-nghe",
-        "speaker": "https://www.dienmayxanh.com/loa-laptop-pc",
-        "monitor": "https://www.dienmayxanh.com/man-hinh-may-tinh",
-        "keyboard": "https://www.dienmayxanh.com/ban-phim-chuot",
-        "mouse": "https://www.dienmayxanh.com/chuot-may-tinh",
-        "powerbank": "https://www.dienmayxanh.com/sac-du-phong"
+    CATEGORY_CONFIG = {
+        "mobile": {"url": "https://www.dienmayxanh.com/dien-thoai", "cate_id": 42},
+        "laptop": {"url": "https://www.dienmayxanh.com/laptop", "cate_id": 44},
+        "tablet": {"url": "https://www.dienmayxanh.com/may-tinh-bang", "cate_id": 522},
+        "smartwatch": {"url": "https://www.dienmayxanh.com/dong-ho-thong-minh", "cate_id": 7077},
+        "headphone": {"url": "https://www.dienmayxanh.com/tai-nghe", "cate_id": 54},
+        "speaker": {"url": "https://www.dienmayxanh.com/dan-loa-dvd", "cate_id": 2162},
+        "monitor": {"url": "https://www.dienmayxanh.com/man-hinh-may-tinh", "cate_id": 5698},
+        "keyboard": {"url": "https://www.dienmayxanh.com/ban-phim", "cate_id": 86},
+        "mouse": {"url": "https://www.dienmayxanh.com/chuot-may-tinh", "cate_id": 86},
+        "powerbank": {"url": "https://www.dienmayxanh.com/pin-sac-du-phong", "cate_id": 57},
+        "tivi": {"url": "https://www.dienmayxanh.com/tivi", "cate_id": 1942},
+        "air-purifier": {"url": "https://www.dienmayxanh.com/may-loc-khong-khi", "cate_id": 5005},
+        "vacuum": {"url": "https://www.dienmayxanh.com/robot-hut-bui", "cate_id": 7714},
+        "camera": {"url": "https://www.dienmayxanh.com/camera-giam-sat", "cate_id": 4728},
+        "water-purifier": {"url": "https://www.dienmayxanh.com/may-loc-nuoc", "cate_id": 2429}
     }
 
-    def __init__(self, category: str = "mobile"):
-        if category not in self.CATEGORY_MAP:
-            raise ValueError(f"Category {category} is not supported by DienmayxanhCrawler")
-        self.category = category
-        self.catalog_url = self.CATEGORY_MAP[category]
+    def __init__(self, category: str = "mobile", province: str = "Hà Nội"):
+        super().__init__(store_name="DienmayXanh", category=category, province=province)
+        if category not in self.CATEGORY_CONFIG:
+            raise ValueError(f"Category '{category}' is not supported by DienmayxanhCrawler")
+        self.config = self.CATEGORY_CONFIG[category]
 
-    def get_availability(self, status_text: str) -> str:
-        s = status_text.lower()
-        if "sắp về" in s:
-            return "Coming Soon"
-        elif "hết hàng" in s or "tạm hết" in s:
-            return "Out of Stock"
-        return "In Stock"
+        dmx_ids = self.location_info.get("dmx_ids", [])
+        self.dmx_province_id = int(dmx_ids[0]) if dmx_ids else 3
 
-    async def load_catalog(self, page) -> list:
-        logging.info(f"[PLAYWRIGHT] Loading DMX {self.category} catalog: {self.catalog_url}")
-        
-        for attempt in range(3):
-            try:
-                await page.goto(self.catalog_url, wait_until="domcontentloaded", timeout=30000)
-                await page.wait_for_timeout(2000)
-                break
-            except Exception as e:
-                logging.warning(f"[RETRY] Catalog load attempt {attempt+1} failed: {e}")
-                if attempt == 2:
-                    logging.error("[ERROR] Failed to load catalog after max attempts.")
-                    return []
-                await asyncio.sleep(2)
+    def _parse_html_cards(self, html_str: str) -> List[Dict[str, Any]]:
+        if not html_str:
+            return []
 
-        for click_idx in range(settings.CRAWLER_MAX_LOAD_MORE):
-            see_more = await page.query_selector("div.view-more a")
-            if not see_more:
-                await page.wait_for_timeout(2000)
-                see_more = await page.query_selector("div.view-more a")
-                if not see_more:
-                    break
-
-            if not await see_more.is_visible():
-                is_vis = False
-                for _ in range(4):
-                    await page.wait_for_timeout(1000)
-                    if await see_more.is_visible():
-                        is_vis = True
-                        break
-                if not is_vis:
-                    break
-
-            unique_count = await page.evaluate("""() => {
-                const cards = document.querySelectorAll('ul.listproduct li.item a.main-contain');
-                const urls = new Set();
-                cards.forEach(a => {
-                    if (a.getAttribute('href')) {
-                        urls.add(a.getAttribute('href'));
-                    }
-                });
-                return urls.size;
-            }""")
-            if unique_count >= settings.CRAWLER_MAX_PRODUCTS:
-                logging.info(f"[PLAYWRIGHT] Already loaded {unique_count} unique items. Stopping.")
-                break
-                
-            await see_more.click()
-            await page.wait_for_timeout(1500)
-            remain_el = await page.query_selector("span.remain")
-            remain_count = int(await remain_el.inner_text()) if remain_el else 0
-            logging.info(f"[PLAYWRIGHT] Click {click_idx + 1}: loaded={unique_count}, remaining={remain_count}")
-            if remain_count == 0:
-                break
-
-        items = await page.query_selector_all("ul.listproduct li.item")
+        soup = BeautifulSoup(html_str, "html.parser")
         products = []
         seen_ids = set()
 
-        for item in items:
-            a = await item.query_selector("a.main-contain")
-            if not a:
+        elements = soup.select("li.item.ajaxed, .listproduct > li.item, ul.listproduct > li, li.item")
+        for elem in elements:
+            link_elem = elem.select_one("a.main-contain, a[href]")
+            if not link_elem:
                 continue
 
-            product_name = (await a.get_attribute("data-name") or "").strip()
-            if not product_name or len(product_name) <= 3:
-                title_el = await item.query_selector("p.product-title")
-                product_name = (await title_el.inner_text()).strip() if title_el else ""
-                if not product_name:
-                    continue
-
-            href = await a.get_attribute("href") or ""
-            product_id_raw = await item.get_attribute("data-id") or ""
-            dedup_key = product_id_raw or href
-            if dedup_key and dedup_key in seen_ids:
+            url = link_elem.get("href", "")
+            if not url or "javascript:" in url or url == "//":
                 continue
-            seen_ids.add(dedup_key)
 
-            product_url = href if href.startswith("http") else f"{self.BASE_URL}{href}"
+            product_url = url if url.startswith("http") else f"{self.BASE_URL}{url}"
+            slug = product_url.split('/')[-1].replace('.html', '').split('?')[0]
+            if not slug or len(slug) <= 2:
+                continue
+            product_id = f"dmx_{slug}"
+            if product_id in seen_ids:
+                continue
+            seen_ids.add(product_id)
 
-            data_price = await item.get_attribute("data-price") or ""
-            price_el = await item.query_selector("strong.price")
-            current_price = (await price_el.inner_text()).strip() if price_el else (f"{float(data_price):,.0f}₫" if data_price else "N/A")
+            # Extract Title
+            title_elem = elem.select_one("p.product-title, h3, .item-title, strong.name")
+            product_name = ""
+            if title_elem:
+                product_name = title_elem.get_text(strip=True)
+            if not product_name:
+                product_name = link_elem.get("data-name", "")
 
-            old_el = await item.query_selector("p.price-old")
-            original_price = (await old_el.inner_text()).strip() if old_el else current_price
+            if not product_name or len(product_name) <= 2:
+                continue
 
-            pct_el = await item.query_selector("span.percent")
-            discount_percent = (await pct_el.inner_text()).strip() if pct_el else "0%"
+            # Price
+            price_elem = elem.select_one("strong.price, .price, .item-price")
+            current_price = "N/A"
+            if price_elem:
+                current_price = price_elem.get_text(strip=True)
+            elif link_elem.get("data-price"):
+                try:
+                    p_val = float(link_elem.get("data-price"))
+                    if p_val > 0:
+                        current_price = f"{int(p_val):,}₫".replace(",", ".")
+                except ValueError:
+                    pass
 
-            status_el = await item.query_selector("p.item-txt-online")
-            status_text = (await status_el.inner_text()).strip() if status_el else ""
+            old_price_elem = elem.select_one("p.price-old, span.box-price-old, .price-old, .item-price-old")
+            original_price = old_price_elem.get_text(strip=True) if old_price_elem else current_price
 
-            img_el = await item.query_selector("img")
+            percent_elem = elem.select_one("span.percent, .item-discount")
+            discount_percent = percent_elem.get_text(strip=True) if percent_elem else "0%"
+
+            img_elem = elem.select_one("img.thumb, img")
             image_url = "N/A"
-            if img_el:
-                image_url = await img_el.get_attribute("data-src") or await img_el.get_attribute("src") or "N/A"
+            if img_elem:
+                image_url = img_elem.get("data-src") or img_elem.get("src") or "N/A"
 
-            data_brand = await a.get_attribute("data-brand") or ""
-            brand = normalize_brand(product_name, fallback_brand=data_brand)
+            card_text = (elem.get_text(separator=" ", strip=True) if elem else product_name).lower()
+            if "sắp về" in card_text or "nhận thông tin" in card_text or "đặt trước" in card_text:
+                avail = "Coming Soon"
+            elif "ngừng kinh doanh" in card_text or "tạm hết" in card_text or "hết hàng" in card_text or current_price == "N/A":
+                avail = "Out of Stock"
+            else:
+                avail = "In Stock"
+
+            rating = 0.0
+            review_count = 0
+            rate_elem = elem.select_one("p.item-rating, .vote-txt, .rating")
+            if rate_elem:
+                rate_text = rate_elem.get_text(strip=True)
+                m = re.search(r'([\d.]+)', rate_text)
+                if m:
+                    try:
+                        val = float(m.group(1))
+                        if 0 < val <= 5:
+                            rating = val
+                    except ValueError:
+                        pass
+                nums = re.findall(r'\((\d+)\)', rate_text)
+                if nums:
+                    review_count = int(nums[0])
+
+            promo_el = elem.select_one("p.item-gift, div.item-gift, p.item-promo, .badge-promo, span.lb-tragop")
+            promotions = promo_el.get_text(separator=" ", strip=True) if promo_el else ""
 
             products.append({
-                "product_id": f"dmx_{product_id_raw}" if product_id_raw else f"dmx_{href.split('/')[-1]}",
+                "product_id": product_id,
                 "product_name": product_name,
-                "brand": brand,
+                "brand": normalize_brand(product_name),
                 "category": self.category,
                 "current_price": current_price,
                 "original_price": original_price,
                 "discount_percent": discount_percent,
-                "availability": self.get_availability(status_text),
+                "availability": avail,
                 "store_name": "DienmayXanh",
                 "product_url": product_url,
                 "image_url": image_url,
-                "rating": 0.0,
-                "review_count": 0,
+                "rating": rating,
+                "review_count": review_count,
+                "promotions": promotions,
                 "crawl_time": datetime.now().isoformat()
             })
 
         return products
 
-    async def fetch_detail_with_retry(self, page, product_url: str, retries: int = 3) -> dict:
-        delay = 1.0
-        for attempt in range(retries):
-            try:
-                await page.goto(product_url, wait_until="domcontentloaded", timeout=20000)
-                await page.evaluate("window.scrollTo(0, 1800);")
-                await page.wait_for_timeout(2500)
-
-                rating = 0.0
-                review_count = 0
-
-                review_el = await page.query_selector(".point-alltimerate, .point-satisfied")
-                if review_el:
-                    review_text = (await review_el.inner_text()).strip().lower()
-                    review_text = review_text.replace(",", ".")
-                    match = re.search(r'([\d.]+)\s*k', review_text)
-                    if match:
-                        review_count = int(float(match.group(1)) * 1000)
-                    else:
-                        nums = re.findall(r'\d+', review_text)
-                        if nums:
-                            review_count = int(nums[0])
-
-                if review_count > 0:
-                    rating_el = await page.query_selector(".point-average-score")
-                    if rating_el:
-                        try:
-                            rating = float((await rating_el.inner_text()).strip().replace(",", "."))
-                        except ValueError:
-                            pass
-                else:
-                    rating = 0.0
-
-                return {"rating": rating, "review_count": review_count}
-            except Exception as e:
-                logging.warning(f"[RETRY] Attempt {attempt+1} failed for {product_url}: {e}")
-                if attempt < retries - 1:
-                    await asyncio.sleep(delay)
-                    delay *= 2
-                else:
-                    logging.error(f"[ERROR] Max retries reached for {product_url}")
-        return {"rating": 0.0, "review_count": 0}
-
-    async def process_product(self, context, sem, product, i, total):
-        async with sem:
-            page = await context.new_page()
-            try:
-                url = normalize_url(product["product_url"])
-                cached = redis_client.get_cached_detail(url)
-                if cached:
-                    product["rating"] = cached["rating"]
-                    product["review_count"] = cached["review_count"]
-                    logging.info(f"[DETAIL-CACHE] ({i}/{total}) {product['product_name']} → rating={cached['rating']}, reviews={cached['review_count']}")
-                else:
-                    detail = await self.fetch_detail_with_retry(page, url)
-                    product["rating"] = detail["rating"]
-                    product["review_count"] = detail["review_count"]
-                    redis_client.set_cached_detail(url, detail, expire_seconds=72000)
-                    logging.info(f"[DETAIL-FETCH] ({i}/{total}) {product['product_name']} → rating={detail['rating']}, reviews={detail['review_count']}")
-            finally:
-                await page.close()
-
-    async def crawl_all(self) -> list:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            context = await browser.new_context(user_agent=self.USER_AGENT)
-            
-            page = await context.new_page()
-            try:
-                products = await self.load_catalog(page)
-            finally:
-                await page.close()
-
-            if not products:
-                logging.warning("[WARN] No products found in catalog parsing!")
-                await browser.close()
-                return []
-
-            products = products[:settings.CRAWLER_MAX_PRODUCTS]
-            logging.info(f"[PARSED] Found {len(products)} products in {self.category}. Fetching detail pages concurrently...")
-
-            sem = asyncio.Semaphore(3)
-            tasks = []
-            for i, product in enumerate(products, 1):
-                tasks.append(self.process_product(context, sem, product, i, len(products)))
-
-            await asyncio.gather(*tasks)
-            await browser.close()
-            return products
-
-    def run(self):
-        products = asyncio.run(self.crawl_all())
-        if not products:
-            logging.error("[ALERT] 0 products parsed. Possible site change or blocker.")
-            return None
-
-        raw_payload = {
-            "source": "dienmayxanh",
-            "category": self.category,
-            "total_items": len(products),
-            "items": products,
-            "crawled_at": datetime.now().isoformat()
+    def crawl(self) -> List[Dict[str, Any]]:
+        url = self.config["url"]
+        headers = {
+            "User-Agent": self.DEFAULT_USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Referer": "https://www.dienmayxanh.com"
         }
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        object_name = f"dienmayxanh/{self.category}/data_{timestamp}.json"
-        saved_location = minio_client.upload_json(raw_payload, object_name)
-        logging.info(f"[MINIO] Uploaded to: {saved_location}")
-        return saved_location
+        # Set Location Cookie for DMX
+        self.session.cookies.set("DMX_Location", str(self.dmx_province_id), domain=".dienmayxanh.com")
+        self.session.cookies.set("LocationId", str(self.dmx_province_id), domain=".dienmayxanh.com")
+
+        products = []
+        for attempt in range(1, 4):
+            try:
+                logging.info(f"[{self.store_name} HTML] Fetching category page: {url} (Attempt {attempt}/3)...")
+                resp = self.session.get(url, headers=headers, timeout=15)
+                if resp and resp.status_code == 200:
+                    products = self._parse_html_cards(resp.text)
+                    if products:
+                        break
+            except Exception as e:
+                logging.warning(f"[{self.store_name} HTML] Attempt {attempt} error: {e}")
+                time.sleep(1)
+
+        logging.info(f"[{self.store_name} HTML] Total {len(products)} products fetched successfully for '{self.category}' in {self.province_name}.")
+        return products
 
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--category", default="mobile", help="Category to crawl")
+    parser.add_argument("--province", default="Hà Nội", help="Province to crawl")
     args = parser.parse_args()
 
-    crawler = DienmayxanhCrawler(category=args.category)
+    crawler = DienmayxanhCrawler(category=args.category, province=args.province)
     crawler.run()
