@@ -17,10 +17,10 @@ CRAWLER_MAP = {
 }
 
 STORES = ["Cellphones", "FPTShop", "DienmayXanh"]
-CATEGORIES = [
-    "mobile", "laptop", "tablet", "smartwatch", "headphone", "speaker",
-    "monitor", "keyboard", "mouse", "powerbank", "tivi", "air-purifier",
-    "vacuum", "camera", "water-purifier"
+ALL_CATEGORIES = [
+    "mobile", "laptop", "tablet", "smartwatch", "tivi",
+    "headphone", "speaker", "keyboard", "mouse", "powerbank",
+    "monitor", "air-purifier", "vacuum", "camera", "water-purifier"
 ]
 
 def run_crawler_process(store_name, module_path, category, province="Hà Nội"):
@@ -65,7 +65,7 @@ def worker_loop(worker_id):
         except Exception as e:
             logging.error(f"Worker-{worker_id} error: {e}")
 
-def check_and_enqueue_missing() -> int:
+def check_and_enqueue_missing(target_categories=None) -> int:
     existing_files = minio_client.list_json_files()
     existing_keys = set()
     for f in existing_files:
@@ -74,14 +74,15 @@ def check_and_enqueue_missing() -> int:
             store = parts[0].lower()
             cat = parts[1].lower()
             file_name = parts[2]
-            loc_code = file_name.split("_")[0].lower()
+            loc_code = file_name.split("_data_")[0].lower() if "_data_" in file_name else file_name.split("_")[0].lower()
             existing_keys.add((store, cat, loc_code))
 
     locations = get_all_34_locations()
     missing_tasks = []
+    cats_to_check = target_categories if target_categories else ALL_CATEGORIES
 
     for store in STORES:
-        for cat in CATEGORIES:
+        for cat in cats_to_check:
             for loc in locations:
                 loc_code = loc["code"].lower()
                 key = (store.lower(), cat.lower(), loc_code)
@@ -94,24 +95,43 @@ def check_and_enqueue_missing() -> int:
 
     if missing_tasks:
         for task in missing_tasks:
-            redis_client.push_queue("crawler:queue", json.dumps(task, ensure_ascii=False))
-        logging.info(f"[AUTO-RECONCILIATION] Found {len(missing_tasks)} missing tasks. Auto-enqueued to Redis!")
+            redis_client.push_queue(json.dumps(task, ensure_ascii=False))
+        logging.info(f"[AUTO-RECONCILIATION] Found {len(missing_tasks)} missing tasks for active categories ({len(cats_to_check)} cates). Auto-enqueued to Redis!")
         return len(missing_tasks)
 
-    logging.info("[AUTO-RECONCILIATION] 100% COMPLETE! All 1,530 tasks exist in MinIO Data Lake.")
+    logging.info(f"[AUTO-RECONCILIATION] 100% COMPLETE! All tasks for {len(cats_to_check)} active categories exist in MinIO Data Lake.")
     return 0
 
 def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--workers", type=int, default=10, help="Number of concurrent workers")
+    parser.add_argument("--batch", choices=["1", "2", "3", "all"], default=None, help="Auto populate batch if queue empty")
     args = parser.parse_args()
 
     q_len = redis_client.get_queue_length("crawler:queue")
     if q_len == 0:
-        logging.warning("Queue is empty! Populating with default tasks...")
-        subprocess.run([sys.executable, "-m", "src.redis.enqueue_tasks"])
+        batch_arg = ["--batch", args.batch] if args.batch else []
+        logging.warning(f"Queue is empty! Populating with tasks ({args.batch or 'all'})...")
+        subprocess.run([sys.executable, "-m", "src.redis.enqueue_tasks"] + batch_arg)
         q_len = redis_client.get_queue_length("crawler:queue")
+
+    # Detect which categories are in the current batch
+    active_categories = set()
+    try:
+        raw_items = redis_client.client.lrange("crawler:queue", 0, -1)
+        for item in raw_items:
+            try:
+                t = json.loads(item)
+                if "category" in t:
+                    active_categories.add(t["category"])
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    target_cats = list(active_categories) if active_categories else ALL_CATEGORIES
+    logging.info(f"Target categories for this crawl session: {target_cats}")
 
     logging.info(f"Starting {args.workers} concurrent workers to process {q_len} tasks...")
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
@@ -119,8 +139,9 @@ def main():
         for f in futures:
             f.result()
 
+    # Auto-Reconciliation Loop: only check & backfill the active categories
     for round_idx in range(1, 3):
-        missing_count = check_and_enqueue_missing()
+        missing_count = check_and_enqueue_missing(target_categories=target_cats)
         if missing_count == 0:
             break
         logging.info(f"=== [AUTO-BACKFILL ROUND {round_idx}] Starting {args.workers} workers to crawl {missing_count} missing tasks ===")
@@ -129,11 +150,11 @@ def main():
             for f in futures:
                 f.result()
 
-    final_missing = check_and_enqueue_missing()
+    final_missing = check_and_enqueue_missing(target_categories=target_cats)
     if final_missing == 0:
-        logging.info("SUCCESS: ALL 1,530 DATA LAKE FILES ARE 100% CRAWLED & STORED IN MINIO!")
+        logging.info(f"SUCCESS: ALL DATA LAKE FILES FOR {len(target_cats)} CATEGORIES ARE 100% CRAWLED & STORED IN MINIO!")
     else:
-        logging.warning(f"Crawling finished. {final_missing} tasks could not be retrieved after all retries.")
+        logging.warning(f"Crawling finished. {final_missing} tasks could not be retrieved.")
 
 if __name__ == "__main__":
     main()

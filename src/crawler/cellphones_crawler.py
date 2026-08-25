@@ -64,8 +64,8 @@ class CellphonesCrawler(BaseCrawler):
 
         FALLBACK_IDS = {
             "mobile": "3", "laptop": "864", "tablet": "4", "smartwatch": "1056",
-            "headphone": "265", "speaker": "73", "monitor": "783",
-            "keyboard": "872", "mouse": "871", "powerbank": "38",
+            "headphone": "265", "speaker": "73", "monitor": "784",
+            "keyboard": "872", "mouse": "871", "powerbank": "122",
             "tivi": "1036", "air-purifier": "1058", "vacuum": "1059",
             "camera": "857", "water-purifier": "1182"
         }
