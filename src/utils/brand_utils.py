@@ -64,7 +64,31 @@ BRAND_KEYWORDS = {
     "edifier": "Edifier",
     "tineco": "Tineco",
     "roborock": "Roborock",
-    "dreame": "Dreame"
+    "dreame": "Dreame",
+    "ecovacs": "Ecovacs",
+    "ezviz": "Ezviz",
+    "imou": "Imou",
+    "tapo": "TP-Link",
+    "tp-link": "TP-Link",
+    "tplink": "TP-Link",
+    "totolink": "Totolink",
+    "tcl": "TCL",
+    "coocaa": "Coocaa",
+    "casper": "Casper",
+    "toshiba": "Toshiba",
+    "sharp": "Sharp",
+    "panasonic": "Panasonic",
+    "philips": "Philips",
+    "tefal": "Tefal",
+    "sunhouse": "Sunhouse",
+    "kangaroo": "Kangaroo",
+    "karofi": "Karofi",
+    "levoit": "Levoit",
+    "coway": "Coway",
+    "dyson": "Dyson",
+    "cuckoo": "Cuckoo",
+    "midea": "Midea",
+    "electrolux": "Electrolux"
 }
 
 def normalize_brand(name: str, fallback_brand: str = "") -> str:
