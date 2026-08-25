@@ -1,7 +1,7 @@
 import redis
 import json
 from typing import Optional
-from src.config.settings import settings
+from configs.settings import settings
 
 class RedisClient:
     def __init__(self):
@@ -21,6 +21,8 @@ class RedisClient:
         self.client.expire(key, ttl_seconds)
 
     def push_queue(self, item: str, queue_name: str = "crawler:queue") -> None:
+        if item == "crawler:queue" and queue_name != "crawler:queue":
+            item, queue_name = queue_name, item
         self.client.lpush(queue_name, item)
 
     def pop_queue(self, queue_name: str = "crawler:queue", timeout: int = 5) -> Optional[str]:
@@ -46,5 +48,11 @@ class RedisClient:
 
     def set_cached_detail(self, url: str, detail_data: dict, expire_seconds: int = 43200) -> None:
         self.client.setex(f"cache:detail:{url}", expire_seconds, json.dumps(detail_data))
+
+    def is_file_processed(self, file_name: str) -> bool:
+        return bool(self.client.sismember("spark:processed_files", file_name))
+
+    def mark_file_processed(self, file_name: str) -> None:
+        self.client.sadd("spark:processed_files", file_name)
 
 redis_client = RedisClient()
