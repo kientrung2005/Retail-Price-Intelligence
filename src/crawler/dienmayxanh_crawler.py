@@ -27,7 +27,7 @@ class DienmayxanhCrawler(BaseCrawler):
         "monitor": {"url": "https://www.dienmayxanh.com/man-hinh-may-tinh", "cate_id": 5698},
         "keyboard": {"url": "https://www.dienmayxanh.com/ban-phim", "cate_id": 86},
         "mouse": {"url": "https://www.dienmayxanh.com/chuot-may-tinh", "cate_id": 86},
-        "powerbank": {"url": "https://www.dienmayxanh.com/pin-sac-du-phong", "cate_id": 57},
+        "powerbank": {"url": "https://www.dienmayxanh.com/sac-dtdd?g=pin-sac-du-phong", "cate_id": 57},
         "tivi": {"url": "https://www.dienmayxanh.com/tivi", "cate_id": 1942},
         "air-purifier": {"url": "https://www.dienmayxanh.com/may-loc-khong-khi", "cate_id": 5005},
         "vacuum": {"url": "https://www.dienmayxanh.com/robot-hut-bui", "cate_id": 7714},

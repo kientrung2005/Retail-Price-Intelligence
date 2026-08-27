@@ -43,33 +43,26 @@ class CellphonesCrawler(BaseCrawler):
         cps_ids = self.location_info.get("cps_ids", [])
         self.cps_province_id = int(cps_ids[0]) if cps_ids else 30
 
+    FALLBACK_IDS = {
+        "mobile": "3",
+        "laptop": "380",
+        "tablet": "4",
+        "smartwatch": "610",
+        "headphone": "265",
+        "speaker": "73",
+        "monitor": "784",
+        "keyboard": "739",
+        "mouse": "664",
+        "powerbank": "122",
+        "tivi": "1124",
+        "air-purifier": "727",
+        "vacuum": "748",
+        "camera": "667",
+        "water-purifier": "2307"
+    }
+
     def _resolve_cate_id(self) -> Optional[str]:
-        cache_key = f"cache:cate_id:cellphones:{self.category}"
-        cached_id = redis_client.client.get(cache_key)
-        if cached_id:
-            return cached_id
-
-        url = self.config["url"]
-        try:
-            resp = self.fetch_with_retry(url, timeout=12)
-            if resp and resp.status_code == 200:
-                match = re.search(r'categories:\s*\["(\d+)"\]|["\']category_id["\']\s*:\s*["\']?(\d+)|["\']categoryId["\']\s*:\s*["\']?(\d+)', resp.text)
-                if match:
-                    cate_id = match.group(1) or match.group(2) or match.group(3)
-                    redis_client.client.setex(cache_key, 604800, str(cate_id))
-                    logging.info(f"[{self.store_name} GraphQL] Dynamically resolved CateID for '{self.category}': {cate_id}")
-                    return cate_id
-        except Exception as e:
-            logging.warning(f"[{self.store_name} GraphQL] Dynamic CateID discovery failed for {url}: {e}")
-
-        FALLBACK_IDS = {
-            "mobile": "3", "laptop": "864", "tablet": "4", "smartwatch": "1056",
-            "headphone": "265", "speaker": "73", "monitor": "784",
-            "keyboard": "872", "mouse": "871", "powerbank": "122",
-            "tivi": "1036", "air-purifier": "1058", "vacuum": "1059",
-            "camera": "857", "water-purifier": "1182"
-        }
-        return FALLBACK_IDS.get(self.category)
+        return self.FALLBACK_IDS.get(self.category)
 
     def _crawl_graphql(self, cate_id: str) -> List[Dict[str, Any]]:
         query = """
