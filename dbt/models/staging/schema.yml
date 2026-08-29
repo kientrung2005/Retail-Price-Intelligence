@@ -1,0 +1,18 @@
+version: 2
+
+sources:
+  - name: raw
+    database: retail_dw
+    schema: public
+    tables:
+      - name: raw_products
+        description: "Bảng dữ liệu thô cào từ 3 site thông qua Apache Spark"
+
+models:
+  - name: stg_products
+    description: "Model staging làm sạch và chuẩn hóa dữ liệu thô"
+    columns:
+      - name: site_product_id
+        description: "ID sản phẩm cụ thể của từng website"
+        tests:
+          - not_null

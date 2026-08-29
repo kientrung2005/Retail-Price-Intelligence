@@ -1,0 +1,111 @@
+version: 2
+
+models:
+  - name: dim_store
+    description: "Bảng chiều lưu trữ danh mục cửa hàng"
+    columns:
+      - name: store_key
+        description: "Khóa surrogate của cửa hàng"
+        tests:
+          - unique
+          - not_null
+      - name: store_name
+        description: "Tên cửa hàng chuẩn hóa"
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_brand
+    description: "Bảng chiều lưu trữ danh mục hãng sản xuất"
+    columns:
+      - name: brand_key
+        description: "Khóa surrogate của hãng"
+        tests:
+          - unique
+          - not_null
+      - name: brand
+        description: "Tên hãng"
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_category
+    description: "Bảng chiều lưu trữ danh mục sản phẩm"
+    columns:
+      - name: category_key
+        description: "Khóa surrogate của danh mục"
+        tests:
+          - unique
+          - not_null
+      - name: category
+        description: "Tên danh mục"
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_date
+    description: "Bảng chiều thời gian sinh tự động"
+    columns:
+      - name: date_key
+        description: "Khóa chính ngày (YYYYMMDD)"
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_product
+    description: "Bảng chiều lưu trữ thực thể sản phẩm chuẩn hóa (canonical)"
+    columns:
+      - name: product_key
+        description: "Khóa surrogate của sản phẩm"
+        tests:
+          - unique
+          - not_null
+      - name: canonical_key
+        description: "Khóa so khớp sản phẩm độc nhất"
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_product_site
+    description: "Bảng chiều sản phẩm theo từng website chi tiết"
+    columns:
+      - name: product_site_key
+        description: "Khóa surrogate chi tiết sản phẩm theo trang web"
+        tests:
+          - unique
+          - not_null
+      - name: site_product_id
+        description: "ID sản phẩm cụ thể trên trang web"
+        tests:
+          - unique
+          - not_null
+
+  - name: fact_product_prices
+    description: "Bảng sự kiện ghi lịch sử giá bán và lượt đánh giá"
+    columns:
+      - name: fact_key
+        description: "Khóa surrogate của dòng sự kiện"
+        tests:
+          - unique
+          - not_null
+      - name: product_site_key
+        description: "Khóa ngoại liên kết dim_product_site"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_product_site')
+              field: product_site_key
+      - name: product_key
+        description: "Khóa ngoại liên kết dim_product"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_product')
+              field: product_key
+      - name: date_key
+        description: "Khóa ngoại liên kết dim_date"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_date')
+              field: date_key

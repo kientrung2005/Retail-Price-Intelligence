@@ -1,0 +1,35 @@
+location_code,province_name,short_name,region,province_type,merged_provinces
+HN,Thành phố Hà Nội,Hà Nội,Miền Bắc,Thành phố trực thuộc Trung ương,Hà Nội
+HUE,Thành phố Huế,Huế,Miền Trung,Thành phố trực thuộc Trung ương,Thừa Thiên Huế
+CB,Tỉnh Cao Bằng,Cao Bằng,Miền Bắc,Tỉnh,Cao Bằng
+DB,Tỉnh Điện Biên,Điện Biên,Miền Bắc,Tỉnh,Điện Biên
+HT,Tỉnh Hà Tĩnh,Hà Tĩnh,Miền Trung,Tỉnh,Hà Tĩnh
+LC,Tỉnh Lai Châu,Lai Châu,Miền Bắc,Tỉnh,Lai Châu
+LS,Tỉnh Lạng Sơn,Lạng Sơn,Miền Bắc,Tỉnh,Lạng Sơn
+NA,Tỉnh Nghệ An,Nghệ An,Miền Trung,Tỉnh,Nghệ An
+QN,Tỉnh Quảng Ninh,Quảng Ninh,Miền Bắc,Tỉnh,Quảng Ninh
+SL,Tỉnh Sơn La,Sơn La,Miền Bắc,Tỉnh,Sơn La
+TH,Tỉnh Thanh Hóa,Thanh Hóa,Miền Trung,Tỉnh,Thanh Hóa
+TQ,Tỉnh Tuyên Quang,Tuyên Quang,Miền Bắc,Tỉnh,"Hà Giang, Tuyên Quang"
+LCA,Tỉnh Lào Cai,Lào Cai,Miền Bắc,Tỉnh,"Lào Cai, Yên Bái"
+TN,Tỉnh Thái Nguyên,Thái Nguyên,Miền Bắc,Tỉnh,"Bắc Kạn, Thái Nguyên"
+PT,Tỉnh Phú Thọ,Phú Thọ,Miền Bắc,Tỉnh,"Vĩnh Phúc, Phú Thọ, Hòa Bình"
+BN,Tỉnh Bắc Ninh,Bắc Ninh,Miền Bắc,Tỉnh,"Bắc Ninh, Bắc Giang"
+HY,Tỉnh Hưng Yên,Hưng Yên,Miền Bắc,Tỉnh,"Hưng Yên, Thái Bình"
+HP,Thành phố Hải Phòng,Hải Phòng,Miền Bắc,Thành phố trực thuộc Trung ương,"Hải Dương, Hải Phòng"
+NB,Tỉnh Ninh Bình,Ninh Bình,Miền Bắc,Tỉnh,"Hà Nam, Ninh Bình, Nam Định"
+QT,Tỉnh Quảng Trị,Quảng Trị,Miền Trung,Tỉnh,"Quảng Bình, Quảng Trị"
+DN,Thành phố Đà Nẵng,Đà Nẵng,Miền Trung,Thành phố trực thuộc Trung ương,"Quảng Nam, Đà Nẵng"
+QNG,Tỉnh Quảng Ngãi,Quảng Ngãi,Miền Trung,Tỉnh,"Kon Tum, Quảng Ngãi"
+GL,Tỉnh Gia Lai,Gia Lai,Miền Trung,Tỉnh,"Gia Lai, Bình Định"
+KH,Tỉnh Khánh Hòa,Khánh Hòa,Miền Trung,Tỉnh,"Ninh Thuận, Khánh Hòa"
+LD,Tỉnh Lâm Đồng,Lâm Đồng,Miền Trung,Tỉnh,"Lâm Đồng, Đắk Nông, Bình Thuận"
+DL,Tỉnh Đắk Lắk,Đắk Lắk,Miền Trung,Tỉnh,"Đắk Lắk, Phú Yên"
+HCM,Thành phố Hồ Chí Minh,Hồ Chí Minh,Miền Nam,Thành phố trực thuộc Trung ương,"Bà Rịa - Vũng Tàu, Bình Dương, TP. Hồ Chí Minh"
+DNA,Thành phố Đồng Nai,Đồng Nai,Miền Nam,Thành phố trực thuộc Trung ương,"Đồng Nai, Bình Phước"
+TN_S,Tỉnh Tây Ninh,Tây Ninh,Miền Nam,Tỉnh,"Tây Ninh, Long An"
+CT,Thành phố Cần Thơ,Cần Thơ,Miền Nam,Thành phố trực thuộc Trung ương,"Cần Thơ, Sóc Trăng, Hậu Giang"
+VL,Tỉnh Vĩnh Long,Vĩnh Long,Miền Nam,Tỉnh,"Bến Tre, Vĩnh Long, Trà Vinh"
+DT,Tỉnh Đồng Tháp,Đồng Tháp,Miền Nam,Tỉnh,"Tiền Giang, Đồng Tháp"
+CM,Tỉnh Cà Mau,Cà Mau,Miền Nam,Tỉnh,"Bạc Liêu, Cà Mau"
+AG,Tỉnh An Giang,An Giang,Miền Nam,Tỉnh,"An Giang, Kiên Giang"

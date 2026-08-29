@@ -1,0 +1,23 @@
+name: 'retail_intelligence'
+version: '1.0.0'
+config-version: 2
+
+profile: 'retail_intelligence'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["data"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  retail_intelligence:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: incremental
