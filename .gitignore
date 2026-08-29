@@ -71,9 +71,17 @@ instance/
 # Sphinx documentation
 docs/_build/
 
-# PyBuilder
+# PyBuilder & Build
 .pybuilder/
+
+# dbt artifacts, logs & user tracking
 target/
+**/target/
+dbt/target/
+dbt/logs/
+dbt_packages/
+.user.yml
+**/.user.yml
 
 # Jupyter Notebook
 .ipynb_checkpoints
