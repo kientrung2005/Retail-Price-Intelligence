@@ -20,7 +20,7 @@ STORES = ["Cellphones", "FPTShop", "DienmayXanh"]
 ALL_CATEGORIES = [
     "mobile", "laptop", "tablet", "smartwatch", "tivi",
     "headphone", "speaker", "keyboard", "mouse", "powerbank",
-    "monitor", "air-purifier", "vacuum", "camera", "water-purifier"
+    "monitor", "air-purifier", "vacuum", "camera"
 ]
 
 def run_crawler_process(store_name, module_path, category, province="Hà Nội"):
@@ -116,7 +116,6 @@ def main():
         subprocess.run([sys.executable, "-m", "src.redis.enqueue_tasks"] + batch_arg)
         q_len = redis_client.get_queue_length("crawler:queue")
 
-    # Detect which categories are in the current batch
     active_categories = set()
     try:
         raw_items = redis_client.client.lrange("crawler:queue", 0, -1)
@@ -139,7 +138,6 @@ def main():
         for f in futures:
             f.result()
 
-    # Auto-Reconciliation Loop: only check & backfill the active categories
     for round_idx in range(1, 3):
         missing_count = check_and_enqueue_missing(target_categories=target_cats)
         if missing_count == 0:

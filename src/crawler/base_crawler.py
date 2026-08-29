@@ -166,14 +166,13 @@ class BaseCrawler(ABC):
         pass
 
     def run(self) -> Optional[str]:
+        logging.info(f"[{self.store_name}] Starting crawl for '{self.category}' in {self.province_name} ({self.location_code})...")
         start_time = time.time()
-        logging.info(f"[{self.store_name}] Starting crawl for category: '{self.category}' in {self.province_name} ({self.region})...")
         try:
             products = self.crawl()
-            saved_path = self.save_to_data_lake(products)
-            elapsed = time.time() - start_time
-            logging.info(f"[{self.store_name}] Completed '{self.category}' in {elapsed:.2f}s.")
-            return saved_path
+            duration = round(time.time() - start_time, 2)
+            logging.info(f"[{self.store_name}] Crawl completed in {duration}s. Found {len(products)} products.")
+            return self.save_to_data_lake(products)
         except Exception as e:
-            logging.error(f"[{self.store_name}] Fatal error crawling '{self.category}': {e}", exc_info=True)
+            logging.error(f"[{self.store_name}] Crawl job failed: {e}", exc_info=True)
             return None

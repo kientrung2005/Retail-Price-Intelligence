@@ -33,8 +33,7 @@ class FptshopCrawler(BaseCrawler):
         "tivi": {"url": "https://fptshop.com.vn/tivi"},
         "air-purifier": {"url": "https://fptshop.com.vn/may-loc-khong-khi"},
         "vacuum": {"url": "https://fptshop.com.vn/robot-hut-bui"},
-        "camera": {"url": "https://fptshop.com.vn/camera"},
-        "water-purifier": {"url": "https://fptshop.com.vn/may-loc-nuoc"}
+        "camera": {"url": "https://fptshop.com.vn/camera"}
     }
 
     def __init__(self, category: str = "mobile", province: str = "Hà Nội"):
@@ -205,7 +204,6 @@ class FptshopCrawler(BaseCrawler):
                     browser = await p.chromium.launch(headless=True)
                     page = await browser.new_page(user_agent=self.DEFAULT_USER_AGENT)
                     
-                    # Block heavy resources to ensure super fast loading
                     await page.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font"] else route.continue_())
 
                     try:
@@ -260,7 +258,6 @@ class FptshopCrawler(BaseCrawler):
             list(executor.map(self._fetch_detail_ratings, products))
 
         return products
-
 
 if __name__ == "__main__":
     import argparse
