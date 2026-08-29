@@ -98,7 +98,6 @@ class SparkConnect:
             print("-------Stop Spark Session--------")
 
     def __getattr__(self, name):
-        """Forward all methods/attributes to SparkSession instance (e.g. read, sql)"""
         return getattr(self.spark, name)
 
 def create_spark_connect():

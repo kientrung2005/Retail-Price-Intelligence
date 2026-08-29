@@ -13,15 +13,15 @@ BATCH_CONFIG = {
         "categories": ["headphone", "speaker", "keyboard", "mouse", "powerbank"]
     },
     "3": {
-        "name": "Dot 3: monitor, air-purifier, vacuum, camera, water-purifier",
-        "categories": ["monitor", "air-purifier", "vacuum", "camera", "water-purifier"]
+        "name": "Dot 3: monitor, air-purifier, vacuum, camera",
+        "categories": ["monitor", "air-purifier", "vacuum", "camera"]
     }
 }
 
 ALL_CATEGORIES = [
     "mobile", "laptop", "tablet", "smartwatch", "tivi",
     "headphone", "speaker", "keyboard", "mouse", "powerbank",
-    "monitor", "air-purifier", "vacuum", "camera", "water-purifier"
+    "monitor", "air-purifier", "vacuum", "camera"
 ]
 
 STORES = ["Cellphones", "FPTShop", "DienmayXanh"]
