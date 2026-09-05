@@ -41,14 +41,18 @@ def create_tables():
         """
         db.cursor.execute(create_table_query)
         
-        idx_product_id = "CREATE INDEX IF NOT EXISTS idx_raw_products_product_id ON raw_products(product_id);"
-        idx_crawl_time = "CREATE INDEX IF NOT EXISTS idx_raw_products_crawl_time ON raw_products(crawl_time);"
-        idx_location = "CREATE INDEX IF NOT EXISTS idx_raw_products_location ON raw_products(location_code);"
-        db.cursor.execute(idx_product_id)
-        db.cursor.execute(idx_crawl_time)
-        db.cursor.execute(idx_location)
+        indexes = [
+            "CREATE INDEX IF NOT EXISTS idx_raw_products_product_id ON raw_products(product_id);",
+            "CREATE INDEX IF NOT EXISTS idx_raw_products_crawl_time ON raw_products(crawl_time);",
+            "CREATE INDEX IF NOT EXISTS idx_raw_products_location ON raw_products(location_code);",
+            "CREATE INDEX IF NOT EXISTS idx_raw_products_pid_time ON raw_products(product_id, crawl_time DESC);",
+            "CREATE INDEX IF NOT EXISTS idx_raw_products_pid_loc_time ON raw_products(product_id, location_code, crawl_time DESC);",
+            "CREATE INDEX IF NOT EXISTS idx_raw_products_category ON raw_products(category);"
+        ]
+        for idx in indexes:
+            db.cursor.execute(idx)
         
-        logging.info("Table raw_products initialized successfully with location and promotion columns.")
+        logging.info("Table raw_products initialized successfully with location, promotion columns and composite indexes.")
 
 if __name__ == "__main__":
     create_tables()

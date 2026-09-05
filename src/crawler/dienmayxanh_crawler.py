@@ -25,7 +25,7 @@ class DienmayxanhCrawler(BaseCrawler):
         "headphone": {"url": "https://www.dienmayxanh.com/tai-nghe", "cate_id": 54},
         "speaker": {"url": "https://www.dienmayxanh.com/dan-loa-dvd", "cate_id": 2162},
         "monitor": {"url": "https://www.dienmayxanh.com/man-hinh-may-tinh", "cate_id": 5698},
-        "keyboard": {"url": "https://www.dienmayxanh.com/ban-phim", "cate_id": 86},
+        "keyboard": {"url": "https://www.dienmayxanh.com/ban-phim", "cate_id": 4547},
         "mouse": {"url": "https://www.dienmayxanh.com/chuot-may-tinh", "cate_id": 86},
         "powerbank": {"url": "https://www.dienmayxanh.com/sac-dtdd?g=pin-sac-du-phong", "cate_id": 57},
         "tivi": {"url": "https://www.dienmayxanh.com/tivi", "cate_id": 1942},
